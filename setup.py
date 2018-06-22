@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 import os
-import pyscada
+from pyscada import bacnet
 
 
 CLASSIFIERS = [
@@ -20,10 +20,10 @@ CLASSIFIERS = [
     'Topic :: Scientific/Engineering :: Visualization'
 ]
 setup(
-    author=pyscada.__author__,
+    author=bacnet.__author__,
     author_email="info@martin-schroeder.net",
     name='pyscada-bacnet',
-    version=pyscada.__version__,
+    version=bacnet.__version__,
     description='BACnet extension for PyScada a Python and Django based Open Source SCADA System',
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
     url='http://www.github.com/trombastic/PyScada',
@@ -38,4 +38,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     test_suite='runtests.main',
+    namespace_packages=['pyscada']
+
 )

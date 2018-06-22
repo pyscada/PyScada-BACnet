@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import pyscada
 
-__version__ = pyscada.__version__
-__author__ = pyscada.__author__
+__version__ = '0.7.0rc5'
+__author__ = 'Martin Schröder'
 
 default_app_config = 'pyscada.bacnet.apps.PyScadaBACnetConfig'
 
