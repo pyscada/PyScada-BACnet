@@ -39,7 +39,7 @@ import random
 
 import BAC0
 
-from pyscada.utils.scheduler import SingleDeviceDAQProcess
+from pyscada.utils.scheduler import MultiDeviceDAQProcess
 from pyscada.models import Variable
 
 import logging
@@ -432,23 +432,26 @@ class Device:
     def __init__(self, device):
         self.device = device
         self._device_not_accessible = 0
-
-        self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" + str(self.device.bacnetdevice.mask),
-                                port=self.device.bacnetdevice.port)
-
-        self.remote_devices = {}
         self.variables = {}
-        self.data = []
 
-        #if not self._connect():
-        #    if self._device_not_accessible == -1:  #
-        #        logger.error("device with id: %d is not accessible" % self.device.pk)
-        #    self._device_not_accessible -= 1
+        if self.device.bacnetdevice.device_type == 0:
+            self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" + str(self.device.bacnetdevice.mask),
+                                    port=self.device.bacnetdevice.port)
 
-        for dev in self.device.bacnet_remote_devices.filter(bacnet_device__active=1):
-            self.remote_devices[dev.bacnet_device.pk] = dev.bacnet_device
+            #if not self._connect():
+            #    if self._device_not_accessible == -1:  #
+            #        logger.error("device with id: %d is not accessible" % self.device.pk)
+            #    self._device_not_accessible -= 1
 
-            for var in dev.bacnet_device.variable_set.filter(active=1):
+            self.remote_devices = {}
+            for dev in self.device.bacnet_remote_devices.filter(bacnet_device__active=1):
+                self.remote_devices[dev.bacnet_device.pk] = dev.bacnet_device
+                for var in dev.bacnet_device.variable_set.filter(active=1):
+                    if not hasattr(var, 'bacnetvariable'):
+                        continue
+                    self.variables[var.pk] = var
+        else:
+            for var in self.device.variable_set.filter(active=1):
                 if not hasattr(var, 'bacnetvariable'):
                     continue
                 self.variables[var.pk] = var
@@ -490,12 +493,6 @@ class Device:
             except BAC0.core.io.IOExceptions.NoResponseFromController as e:
                 logger.info("%s : %s" % (self.device, e))
                 value = None
-            except ValueError:
-                if type(value) == str:
-                    value = item.convert_string_value(value)
-                else:
-                    logger.info("Value read for %s format not supported : %s" % (item, type(value)))
-                    value = None
             except Exception as e:
                 logger.info("%s : %s" % (self.device, e))
                 value = None
@@ -520,6 +517,7 @@ class Device:
         logger.debug(variable_id)
         logger.debug(value)
         logger.debug(task)
+
         if not driver_ok:
             return None
 
@@ -531,17 +529,25 @@ class Device:
             return output
         elif not v.writeable:
             logger.debug("%s is not writeable" % v)
+            return output
 
         try:
-            value = float(self.server.write(str(v.device.bacnetdevice.ip_address)
+            self.server.write(str(v.device.bacnetdevice.ip_address)
                                             + " "
                                             + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
                                             + " "
                                             + str(v.bacnetvariable.object_identifier)
                                             + " "
                                             + "presentValue "
-                                            + value
-                                            + " - 1"))
+                                            + str(value)
+                                            + " ")
+            value = float(self.server.read(str(v.device.bacnetdevice.ip_address)
+                                            + " "
+                                            + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
+                                            + " "
+                                            + str(v.bacnetvariable.object_identifier)
+                                            + " "
+                                            + "presentValue"))
         except BAC0.core.io.IOExceptions.NoResponseFromController as e:
             logger.info("%s : %s" % (self.device, e))
             value = None
@@ -554,17 +560,27 @@ class Device:
         return output
 
 
-class Process(SingleDeviceDAQProcess):
+class Process(MultiDeviceDAQProcess):
     device_filter = dict(bacnetdevice__isnull=False)
     bp_label = 'pyscada.bacnet-%s'
+
+    def init_process(self):
+        super(Process, self).init_process()
+        for d in self.devices:
+            if self.devices[d].device.bacnetdevice.device_type > 0:
+                logger.debug("Change device instance for %s to %s"
+                %(self.devices[d].device.bacnetdevice, self.devices[d].device.bacnetdevice.bacnet_local_device))
+                self.devices[d] = self.devices[self.devices[d].device.bacnetdevice.bacnet_local_device.id]
 
     def restart(self):
         """
         just re-init
         """
-        self.device._disconnect()
-        if self.device.device.bacnetdevice.device_type == 0:
-            return super(Process, self).restart()
-        else:
-            logger.debug("Not a local bacnet device : not restarting")
-            self.stop()
+        for d in self.devices:
+            if Device.objects.get(id=d).bacnetdevice.device_type == 0:
+                self.devices[d]._disconnect()
+        #if self.device.device.bacnetdevice.device_type == 0:
+                super(Process, self).restart()
+            else:
+                logger.debug("Not a local bacnet device : not restarting %s" % self.devices[d])
+                self.stop()
