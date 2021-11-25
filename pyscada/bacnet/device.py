@@ -482,17 +482,25 @@ class Device:
         properties = []
 
         for item in self.variables.values():
+            value = None
             try:
-                value = float(self.server.read(str(item.device.bacnetdevice.ip_address)
+                value = self.server.read(str(item.device.bacnetdevice.ip_address)
                                                + " "
                                                + str(item.bacnetvariable.object_type_choises[item.bacnetvariable.object_type][1])
                                                + " "
                                                + str(item.bacnetvariable.object_identifier)
                                                + " "
-                                               + "presentValue"))
+                                               + "presentValue")
+                value = float(value)
             except BAC0.core.io.IOExceptions.NoResponseFromController as e:
                 logger.info("%s : %s" % (self.device, e))
                 value = None
+            except ValueError:
+                if type(value) == str:
+                    value = item.convert_string_value(value)
+                else:
+                    logger.info("Value read for %s format not supported : %s" % (item, type(value)))
+                    value = None
             except Exception as e:
                 logger.info("%s : %s" % (self.device, e))
                 value = None
@@ -530,27 +538,34 @@ class Device:
         elif not v.writeable:
             logger.debug("%s is not writeable" % v)
             return output
-
+        value = None
         try:
             self.server.write(str(v.device.bacnetdevice.ip_address)
-                                            + " "
-                                            + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
-                                            + " "
-                                            + str(v.bacnetvariable.object_identifier)
-                                            + " "
-                                            + "presentValue "
-                                            + str(value)
-                                            + " ")
-            value = float(self.server.read(str(v.device.bacnetdevice.ip_address)
-                                            + " "
-                                            + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
-                                            + " "
-                                            + str(v.bacnetvariable.object_identifier)
-                                            + " "
-                                            + "presentValue"))
+                              + " "
+                              + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
+                              + " "
+                              + str(v.bacnetvariable.object_identifier)
+                              + " "
+                              + "presentValue "
+                              + str(value)
+                              + " ")
+            value = self.server.read(str(v.device.bacnetdevice.ip_address)
+                                     + " "
+                                     + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
+                                     + " "
+                                     + str(v.bacnetvariable.object_identifier)
+                                     + " "
+                                     + "presentValue")
+            value = float(value)
         except BAC0.core.io.IOExceptions.NoResponseFromController as e:
             logger.info("%s : %s" % (self.device, e))
             value = None
+        except ValueError:
+            if type(value) == str:
+                value = v.convert_string_value(value)
+            else:
+                logger.info("Value read for %s format not supported : %s" % (v, type(value)))
+                value = None
         except Exception as e:
             logger.info("%s : %s" % (self.device, e))
             value = None
