@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 
-__version__ = '0.7.0rc6'
+__version__ = '0.7.0rc19'
 __author__ = 'Martin Schröder'
 
 default_app_config = 'pyscada.bacnet.apps.PyScadaBACnetConfig'
