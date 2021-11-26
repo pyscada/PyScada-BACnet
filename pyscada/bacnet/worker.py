@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 from pyscada.utils.scheduler import MultiDeviceDAQProcessWorker
 from pyscada.models import Device, BackgroundProcess
+from pyscada.bacnet import PROTOCOL_ID
 
 
 import json
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Process(MultiDeviceDAQProcessWorker):
-    device_filter = dict(bacnetdevice__isnull=False, bacnetdevice__device_type=0)
+    device_filter = dict(bacnetdevice__isnull=False, bacnetdevice__device_type=0, protocol_id=PROTOCOL_ID)
     process_class = 'pyscada.bacnet.device.Process'
     bp_label = 'pyscada.bacnet-%s'
 

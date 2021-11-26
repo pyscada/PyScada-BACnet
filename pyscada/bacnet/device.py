@@ -41,6 +41,7 @@ import BAC0
 
 from pyscada.utils.scheduler import MultiDeviceDAQProcess
 from pyscada.models import Variable
+from pyscada.bacnet import PROTOCOL_ID
 
 import logging
 
@@ -576,7 +577,7 @@ class Device:
 
 
 class Process(MultiDeviceDAQProcess):
-    device_filter = dict(bacnetdevice__isnull=False)
+    device_filter = dict(bacnetdevice__isnull=False, protocol_id=PROTOCOL_ID)
     bp_label = 'pyscada.bacnet-%s'
 
     def init_process(self):
