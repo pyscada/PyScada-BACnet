@@ -41,6 +41,8 @@ class BACnetDevice(models.Model):
             super().add_fields(form, index)
             if form.initial:
                 form.fields['device_type'].disabled = True
+                form.fields['bacnet_local_device'].queryset = Device.objects.filter(bacnetdevice__isnull=False,
+                                                                                    bacnetdevice__device_type=0)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'protocol':
