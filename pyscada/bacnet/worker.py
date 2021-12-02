@@ -26,12 +26,13 @@ class Process(MultiDeviceDAQProcessWorker):
     def init_process(self):
         super(Process, self).init_process()
         for process in self.processes:
+            logger.debug(process)
             bp = BackgroundProcess.objects.filter(pk=process['id'])
             device_ids = [Device.objects.get(id=process['device_ids'][0])]
             for item in Device.objects.filter(active=True, bacnetdevice__isnull=False, bacnetdevice__bacnet_local_device=process['device_ids'][0]):
+                logger.debug(item)
                 device_ids.append(item)
             bp.update(process_class_kwargs=json.dumps({'device_ids': [i.pk for i in device_ids]}))
-
 
     def gen_group_id(self, item):
         return '%d-%s:%s' % (item.pk, item.bacnetdevice.ip_address, item.bacnetdevice.port)

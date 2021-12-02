@@ -56,6 +56,12 @@ class BACnetDevice(models.Model):
 
     protocol_id = PROTOCOL_ID
 
+    def parent_device(self):
+        try:
+            return self.bacnet_device
+        except:
+            return None
+
 
 @python_2_unicode_compatible
 class BACnetDeviceProperty(models.Model):

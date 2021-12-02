@@ -9,7 +9,7 @@ except ImportError:
     driver_ok = False
 
 from math import isnan, isinf
-from time import time
+from time import time, sleep
 import sys
 import traceback
 
@@ -41,6 +41,7 @@ import BAC0
 
 from pyscada.utils.scheduler import MultiDeviceDAQProcess
 from pyscada.models import Variable
+from pyscada.models import Device as PyScadaDevice
 from pyscada.bacnet import PROTOCOL_ID
 
 import logging
@@ -436,8 +437,14 @@ class Device:
         self.variables = {}
 
         if self.device.bacnetdevice.device_type == 0:
-            self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" + str(self.device.bacnetdevice.mask),
-                                    port=self.device.bacnetdevice.port)
+            try:
+                logger.debug(self)
+                self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" +
+                                           str(self.device.bacnetdevice.mask),
+                                        port=self.device.bacnetdevice.port)
+            except BAC0.core.io.IOExceptions.InitializationError as e:
+                self.server = None
+                logger.warning(e)
 
             #if not self._connect():
             #    if self._device_not_accessible == -1:  #
@@ -461,16 +468,18 @@ class Device:
         """
         connect to the bacnet slave (server)
         """
-        status = self.server.connect()
-        return status
+        if self.server is not None:
+            status = self.server.connect()
+            return status
 
     def _disconnect(self):
         """
         disconnect to the bacnet slave (server)
         """
-        logger.debug("Disconnecting BACNet device")
-        status = self.server.disconnect()
-        return status
+        if self.server is not None:
+            logger.debug("Disconnecting BACNet device %s" % self.server)
+            status = self.server.disconnect()
+            return status
 
     def request_data(self):
         """
@@ -484,6 +493,8 @@ class Device:
 
         for item in self.variables.values():
             value = None
+            if self.server is None:
+                return output
             try:
                 value = self.server.read(str(item.device.bacnetdevice.ip_address)
                                                + " "
@@ -581,22 +592,26 @@ class Process(MultiDeviceDAQProcess):
     bp_label = 'pyscada.bacnet-%s'
 
     def init_process(self):
-        super(Process, self).init_process()
+        r = super(Process, self).init_process()
         for d in self.devices:
             if self.devices[d].device.bacnetdevice.device_type > 0:
                 logger.debug("Change device instance for %s to %s"
                 %(self.devices[d].device.bacnetdevice, self.devices[d].device.bacnetdevice.bacnet_local_device))
                 self.devices[d] = self.devices[self.devices[d].device.bacnetdevice.bacnet_local_device.id]
+        return r
 
     def restart(self):
         """
         just re-init
         """
+        r = False
         for d in self.devices:
-            if Device.objects.get(id=d).bacnetdevice.device_type == 0:
+            if PyScadaDevice.objects.get(id=d).bacnetdevice.device_type == 0:
                 self.devices[d]._disconnect()
         #if self.device.device.bacnetdevice.device_type == 0:
-                super(Process, self).restart()
+                #r = super(Process, self).restart()
+                r = True
             else:
-                logger.debug("Not a local bacnet device : not restarting %s" % self.devices[d])
+                logger.debug("Not a local bacnet device : not restarting %s" % d)
                 self.stop()
+        return r
