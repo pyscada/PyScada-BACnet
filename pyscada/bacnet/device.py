@@ -439,15 +439,42 @@ class Device:
 
         if self.device.bacnetdevice.device_type == 0:
             try:
-                logger.debug(self)
                 self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" +
                                         str(self.device.bacnetdevice.mask),
                                         port=self.device.bacnetdevice.port)
                 self.device.bacnetdevice.remote_devices_discovered = 'Discovering'
                 BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
                 self.server.discover(networks='known')
-                self.device.bacnetdevice.remote_devices_discovered = str(self.server.devices)
-                BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                remote_devices = self.server.devices
+                if type(remote_devices) == list:
+                    _remote_devices = ''
+                    for d in remote_devices:
+                        _remote_devices += str(d) + '\n'
+                    self.device.bacnetdevice.remote_devices_discovered = _remote_devices
+                    BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                else:
+                    self.device.bacnetdevice.remote_devices_discovered = ''
+                    BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                _remotes = []
+                for remote in self.device.bacnetdevice.remote_devices_discovered:
+                    if len(remote) == 4:
+                        r = BACnetDevice.objects.filter(bacnet_local_device=self.device, ip_address=remote[2])
+                        if len(r) > 1:
+                            logger.info("BACnet remote device duplicated : %s" % r)
+                        elif len(r) == 0:
+                            continue
+                        else:
+                            r = r.first()
+                            dev = BAC0.device(remote[2], int(remote[3]), self.server, history_size=0, poll=0)
+                            dev.update_bacnet_properties()
+                            if 'objectList' in d.bacnet_properties:
+                                _variables = ''
+                                for v in d.bacnet_properties['objectList']:
+                                    _variables += str(v) + '\n'
+                                r.remote_devices_variables = _variables
+                            dev.diconnect()
+                BACnetDevice.objects.bulk_update(_remotes, ['remote_devices_variables'])
+
             except BAC0.core.io.IOExceptions.InitializationError as e:
                 self.server = None
                 logger.warning(e)

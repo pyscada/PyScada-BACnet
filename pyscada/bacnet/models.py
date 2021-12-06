@@ -36,6 +36,9 @@ class BACnetDevice(models.Model):
     remote_devices_discovered = models.CharField(default='', max_length=300,
                                                  help_text='After creating a local device, '
                                                            'refresh the page until you see the result')
+    remote_devices_variables = models.CharField(default='', max_length=1000,
+                                                help_text='After creating a remote device, '
+                                                          'refresh the page until you see the result')
 
     def __str__(self):
         return self.bacnet_device.short_name
@@ -50,7 +53,7 @@ class BACnetDevice(models.Model):
             'fields': ('mask', 'port', 'remote_devices_discovered')
         }),
         ('Remote BACnet device parameter', {
-            'fields': ('bacnet_local_device',)
+            'fields': ('bacnet_local_device', 'remote_devices_variables')
         }),
     )
 
@@ -61,6 +64,8 @@ class BACnetDevice(models.Model):
                 form.fields['device_type'].disabled = True
             form.fields['remote_devices_discovered'].widget = forms.Textarea()
             form.fields['remote_devices_discovered'].disabled = True
+            form.fields['remote_devices_variables'].widget = forms.Textarea()
+            form.fields['remote_devices_variables'].disabled = True
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'protocol':
