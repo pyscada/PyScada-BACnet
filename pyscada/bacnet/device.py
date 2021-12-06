@@ -450,13 +450,14 @@ class Device:
                     _remote_devices = ''
                     for d in remote_devices:
                         _remote_devices += str(d) + '\n'
-                    self.device.bacnetdevice.remote_devices_discovered = _remote_devices
+                    self.device.bacnetdevice.remote_devices_discovered = \
+                        _remote_devices[:BACnetDevice._meta.get_field('remote_devices_discovered').max_length]
                     BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
                 else:
                     self.device.bacnetdevice.remote_devices_discovered = ''
                     BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
                 _remotes = []
-                for remote in self.device.bacnetdevice.remote_devices_discovered:
+                for remote in remote_devices:
                     if len(remote) == 4:
                         r = BACnetDevice.objects.filter(bacnet_local_device=self.device, ip_address=remote[2])
                         if len(r) > 1:
@@ -467,12 +468,14 @@ class Device:
                             r = r.first()
                             dev = BAC0.device(remote[2], int(remote[3]), self.server, history_size=0, poll=0)
                             dev.update_bacnet_properties()
-                            if 'objectList' in d.bacnet_properties:
-                                _variables = ''
-                                for v in d.bacnet_properties['objectList']:
-                                    _variables += str(v) + '\n'
-                                r.remote_devices_variables = _variables
-                            dev.diconnect()
+                            logger.debug(dev.properties.objects_list)
+                            _variables = ''
+                            for v in dev.properties.objects_list:
+                                _variables += str(v) + '\n'
+                            r.remote_devices_variables = \
+                                _variables[:BACnetDevice._meta.get_field('remote_devices_variables').max_length]
+                            _remotes.append(r)
+                            dev.disconnect()
                 BACnetDevice.objects.bulk_update(_remotes, ['remote_devices_variables'])
 
             except BAC0.core.io.IOExceptions.InitializationError as e:

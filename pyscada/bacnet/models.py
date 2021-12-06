@@ -36,7 +36,7 @@ class BACnetDevice(models.Model):
     remote_devices_discovered = models.CharField(default='', max_length=300,
                                                  help_text='After creating a local device, '
                                                            'refresh the page until you see the result')
-    remote_devices_variables = models.CharField(default='', max_length=1000,
+    remote_devices_variables = models.CharField(default='', max_length=2000,
                                                 help_text='After creating a remote device, '
                                                           'refresh the page until you see the result')
 
