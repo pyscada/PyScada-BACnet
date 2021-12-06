@@ -10,6 +10,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.forms.models import BaseInlineFormSet
+from django import forms
 
 import logging
 
@@ -58,6 +59,7 @@ class BACnetDevice(models.Model):
             super().add_fields(form, index)
             if form.initial:
                 form.fields['device_type'].disabled = True
+            form.fields['remote_devices_discovered'].widget = forms.Textarea()
             form.fields['remote_devices_discovered'].disabled = True
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
