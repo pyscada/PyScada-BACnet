@@ -586,7 +586,7 @@ class Device:
         elif not v.writeable:
             logger.debug("%s is not writeable" % v)
             return output
-        value = None
+        read_value = None
         try:
             self.server.write(str(v.device.bacnetdevice.ip_address)
                               + " "
@@ -597,27 +597,27 @@ class Device:
                               + "presentValue "
                               + str(value)
                               + " ")
-            value = self.server.read(str(v.device.bacnetdevice.ip_address)
-                                     + " "
-                                     + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
-                                     + " "
-                                     + str(v.bacnetvariable.object_identifier)
-                                     + " "
-                                     + "presentValue")
-            value = float(value)
+            read_value = self.server.read(str(v.device.bacnetdevice.ip_address)
+                                      + " "
+                                      + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
+                                      + " "
+                                      + str(v.bacnetvariable.object_identifier)
+                                      + " "
+                                      + "presentValue")
+            read_value = float(read_value)
         except BAC0.core.io.IOExceptions.NoResponseFromController as e:
             logger.info("%s : %s" % (self.device, e))
-            value = None
+            read_value = None
         except ValueError:
-            if type(value) == str:
-                value = v.convert_string_value(value)
+            if type(read_value) == str:
+                read_value = v.convert_string_value(read_value)
             else:
-                logger.info("Value read for %s format not supported : %s" % (v, type(value)))
-                value = None
+                logger.info("Value read for %s format not supported : %s" % (v, type(read_value)))
+                read_value = None
         except Exception as e:
             logger.info("%s : %s" % (self.device, e))
-            value = None
-        if value is not None and v.update_value(value, time()):
+            read_value = None
+        if read_value is not None and v.update_value(read_value, time()):
             output.append(v.create_recorded_data_element())
 
         return output
