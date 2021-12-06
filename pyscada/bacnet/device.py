@@ -43,6 +43,7 @@ from pyscada.utils.scheduler import MultiDeviceDAQProcess
 from pyscada.models import Variable
 from pyscada.models import Device as PyScadaDevice
 from pyscada.bacnet import PROTOCOL_ID
+from pyscada.bacnet.models import BACnetDevice
 
 import logging
 
@@ -440,8 +441,13 @@ class Device:
             try:
                 logger.debug(self)
                 self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" +
-                                           str(self.device.bacnetdevice.mask),
+                                        str(self.device.bacnetdevice.mask),
                                         port=self.device.bacnetdevice.port)
+                self.device.bacnetdevice.remote_devices_discovered = 'Discovering'
+                BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                self.server.discover(networks='known')
+                self.device.bacnetdevice.remote_devices_discovered = str(self.server.devices)
+                BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
             except BAC0.core.io.IOExceptions.InitializationError as e:
                 self.server = None
                 logger.warning(e)

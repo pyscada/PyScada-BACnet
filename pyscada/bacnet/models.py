@@ -29,20 +29,36 @@ class BACnetDevice(models.Model):
                             max_length=400,
                             help_text="for IP default port is 47808")
     bacnet_local_device = models.ForeignKey(Device, null=True, blank=True, on_delete=models.CASCADE,
-                                            related_name='bacnet_remote_devices')
+                                            related_name='bacnet_remote_devices',
+                                            limit_choices_to={'bacnetdevice__isnull': False,
+                                                              'bacnetdevice__device_type': 0})
+    remote_devices_discovered = models.CharField(default='', max_length=300,
+                                                 help_text='After creating a local device, '
+                                                           'refresh the page until you see the result')
 
     def __str__(self):
         return self.bacnet_device.short_name
 
     fk_name = 'bacnet_device'
 
+    fieldsets = (
+        (None, {
+            'fields': ('bacnet_device', 'device_type', 'ip_address')
+        }),
+        ('Local BACnet device parameters', {
+            'fields': ('mask', 'port', 'remote_devices_discovered')
+        }),
+        ('Remote BACnet device parameter', {
+            'fields': ('bacnet_local_device',)
+        }),
+    )
+
     class FormSet(BaseInlineFormSet):
         def add_fields(self, form, index):
             super().add_fields(form, index)
             if form.initial:
                 form.fields['device_type'].disabled = True
-                form.fields['bacnet_local_device'].queryset = Device.objects.filter(bacnetdevice__isnull=False,
-                                                                                    bacnetdevice__device_type=0)
+            form.fields['remote_devices_discovered'].disabled = True
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == 'protocol':
