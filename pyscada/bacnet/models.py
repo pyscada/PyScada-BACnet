@@ -33,10 +33,10 @@ class BACnetDevice(models.Model):
                                             related_name='bacnet_remote_devices',
                                             limit_choices_to={'bacnetdevice__isnull': False,
                                                               'bacnetdevice__device_type': 0})
-    remote_devices_discovered = models.CharField(default='', max_length=300,
+    remote_devices_discovered = models.CharField(default='', max_length=300, blank=True, null=True,
                                                  help_text='After creating a local device, '
                                                            'refresh the page until you see the result')
-    remote_devices_variables = models.CharField(default='', max_length=2000,
+    remote_devices_variables = models.CharField(default='', max_length=2000, blank=True, null=True,
                                                 help_text='After creating a remote device, '
                                                           'refresh the page until you see the result')
 
