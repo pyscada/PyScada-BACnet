@@ -8,7 +8,6 @@ from . import PROTOCOL_ID
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.encoding import python_2_unicode_compatible
 from django.forms.models import BaseInlineFormSet
 from django import forms
 
@@ -17,7 +16,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@python_2_unicode_compatible
 class BACnetDevice(models.Model):
     bacnet_device = models.OneToOneField(Device, null=True, blank=True, on_delete=models.CASCADE)
     device_type_choices = ((0, 'Local'), (1, 'Remote'),)
@@ -86,7 +84,6 @@ class BACnetDevice(models.Model):
             return None
 
 
-@python_2_unicode_compatible
 class BACnetDeviceProperty(models.Model):
     bacnet_device = models.ForeignKey(BACnetDevice, on_delete=models.CASCADE)
     property_id = models.PositiveIntegerField()  # TODO add choices
@@ -103,7 +100,6 @@ class BACnetDeviceProperty(models.Model):
         return self.bacnet_device.short_name
 
 
-@python_2_unicode_compatible
 class BACnetVariable(models.Model):
     bacnet_variable = models.OneToOneField(Variable, null=True, blank=True, on_delete=models.CASCADE)
     object_identifier = models.PositiveIntegerField()
@@ -126,7 +122,6 @@ class BACnetVariable(models.Model):
     protocol_id = PROTOCOL_ID
 
 
-@python_2_unicode_compatible
 class BACnetVariableProperty(models.Model):
     bacnet_variable = models.ForeignKey(BACnetVariable, on_delete=models.CASCADE)
     id_choices = ()

@@ -4,6 +4,27 @@ from __future__ import unicode_literals
 import pyscada
 
 try:
+    from bacpypes.consolelogging import ConfigArgumentParser
+
+    from bacpypes.core import run, stop, enable_sleeping
+
+    from bacpypes.pdu import Address, GlobalBroadcast
+    from bacpypes.apdu import WhoIsRequest, IAmRequest, SimpleAckPDU, Error
+    from bacpypes.apdu import ReadPropertyMultipleRequest, PropertyReference
+    from bacpypes.apdu import ReadAccessSpecification, ReadPropertyMultipleACK, SubscribeCOVRequest
+    from bacpypes.primitivedata import Unsigned
+    from bacpypes.constructeddata import Array
+    from bacpypes.errors import DecodingError
+    from bacpypes.primitivedata import CharacterString
+    from bacpypes.object import get_object_class, get_datatype
+
+    from bacpypes.app import BIPSimpleApplication
+    from bacpypes.local.device import LocalDeviceObject
+    from bacpypes.basetypes import ServicesSupported, DeviceStatus, PropertyIdentifier
+    from bacpypes.iocb import IOCB
+    from bacpypes.errors import ExecutionError
+
+    import BAC0
     driver_ok = True
 except ImportError:
     driver_ok = False
@@ -13,31 +34,9 @@ from time import time, sleep
 import sys
 import traceback
 
-from bacpypes.consolelogging import ConfigArgumentParser
-
-from bacpypes.core import run, stop, enable_sleeping
-
-from bacpypes.pdu import Address, GlobalBroadcast
-from bacpypes.apdu import WhoIsRequest, IAmRequest, SimpleAckPDU, Error
-from bacpypes.apdu import ReadPropertyMultipleRequest, PropertyReference
-from bacpypes.apdu import ReadAccessSpecification, ReadPropertyMultipleACK, SubscribeCOVRequest
-from bacpypes.primitivedata import Unsigned
-from bacpypes.constructeddata import Array
-from bacpypes.errors import DecodingError
-from bacpypes.primitivedata import CharacterString
-from bacpypes.object import get_object_class, get_datatype
-
-from bacpypes.app import BIPSimpleApplication
-from bacpypes.local.device import LocalDeviceObject
-from bacpypes.basetypes import ServicesSupported, DeviceStatus, PropertyIdentifier
-from bacpypes.iocb import IOCB
-from bacpypes.errors import ExecutionError
-
-
 from threading import Thread
 import random
 
-import BAC0
 
 from pyscada.utils.scheduler import MultiDeviceDAQProcess
 from pyscada.models import Variable
@@ -468,7 +467,7 @@ class Device:
                             r = r.first()
                             dev = BAC0.device(remote[2], int(remote[3]), self.server, history_size=0, poll=0)
                             dev.update_bacnet_properties()
-                            logger.debug(dev.properties.objects_list)
+                            #logger.debug(dev.properties.objects_list)
                             _variables = ''
                             for v in dev.properties.objects_list:
                                 _variables += str(v) + '\n'

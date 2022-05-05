@@ -31,8 +31,9 @@ setup(
     platforms=['OS Independent'],
     classifiers=CLASSIFIERS,
     install_requires=[
-        'pyscada>=0.7.0rc22',
+        'pyscada>=0.7.1rc1',
         'bacpypes',
+        'BAC0',
     ],
     packages=find_packages(exclude=["project", "project.*"]),
     include_package_data=True,
