@@ -4,48 +4,57 @@ from __future__ import unicode_literals
 import pyscada
 
 try:
-    _DRIVER_OK = True
+    from bacpypes.consolelogging import ConfigArgumentParser
+
+    from bacpypes.core import run, stop, enable_sleeping
+
+    from bacpypes.pdu import Address, GlobalBroadcast
+    from bacpypes.apdu import WhoIsRequest, IAmRequest, SimpleAckPDU, Error
+    from bacpypes.apdu import ReadPropertyMultipleRequest, PropertyReference
+    from bacpypes.apdu import ReadAccessSpecification, ReadPropertyMultipleACK, SubscribeCOVRequest
+    from bacpypes.primitivedata import Unsigned
+    from bacpypes.constructeddata import Array
+    from bacpypes.errors import DecodingError
+    from bacpypes.primitivedata import CharacterString
+    from bacpypes.object import get_object_class, get_datatype
+
+    from bacpypes.app import BIPSimpleApplication
+    from bacpypes.local.device import LocalDeviceObject
+    from bacpypes.basetypes import ServicesSupported, DeviceStatus, PropertyIdentifier
+    from bacpypes.iocb import IOCB
+    from bacpypes.errors import ExecutionError
+
+    import BAC0
+    driver_ok = True
 except ImportError:
-    _DRIVER_OK = False
+    driver_ok = False
 
 from math import isnan, isinf
-from time import time
+from time import time, sleep
 import sys
-
-from bacpypes.consolelogging import ConfigArgumentParser
-
-from bacpypes.core import run, stop, enable_sleeping
-
-from bacpypes.pdu import Address, GlobalBroadcast
-from bacpypes.apdu import WhoIsRequest, IAmRequest, SimpleAckPDU, Error
-from bacpypes.apdu import ReadPropertyMultipleRequest, PropertyReference
-from bacpypes.apdu import ReadAccessSpecification, ReadPropertyMultipleACK, SubscribeCOVRequest
-from bacpypes.primitivedata import Unsigned
-from bacpypes.constructeddata import Array
-from bacpypes.errors import DecodingError
-from bacpypes.primitivedata import CharacterString
-from bacpypes.object import get_object_class, get_datatype
-
-from bacpypes.app import BIPSimpleApplication
-from bacpypes.local.device import LocalDeviceObject
-from bacpypes.basetypes import ServicesSupported, DeviceStatus, PropertyIdentifier
-from bacpypes.iocb import IOCB
-from bacpypes.errors import ExecutionError
-
+import traceback
 
 from threading import Thread
 import random
+
+
+from pyscada.utils.scheduler import MultiDeviceDAQProcess
+from pyscada.models import Variable
+from pyscada.models import Device as PyScadaDevice
+from pyscada.bacnet import PROTOCOL_ID
+from pyscada.bacnet.models import BACnetDevice
 
 import logging
 
 logger = logging.getLogger(__name__)
 _debug = 1
 
+
 class Server:
     """
     BACnet Server that implements all communication over IP
     """
-    def __init__(self,local_ip,local_object_name='PyScada', device_id=None,
+    def __init__(self, local_ip, local_object_name='PyScada', device_id=None,
                  max_APDU_length_accepted='1024', max_segments_accepted='1024',
                  segmentation_supported='segmentedBoth',
                  bbmd_address=None, bbmd_TTL=0, *args):
@@ -68,7 +77,6 @@ class Server:
         self.bbmd_TTL = bbmd_TTL
         self.t = None
 
-
     def connect(self):
         """
 
@@ -84,9 +92,9 @@ class Server:
                 vendorName=self.vendor_name,
                 modelName=self.model_name,
                 systemStatus=self.system_status,
-                description='PyScada BACnet DAQs Service (https://github.com/trombastic/pyscada)',
+                description='PyScada BACnet DAQs Service (https://github.com/pyscada/pyscada)',
                 firmwareRevision=''.join(sys.version.split('|')[:2]),
-                applicationSoftwareVersion=pyscada.__version__,
+                applicationSoftwareVersion=pyscada.core.version(),
                 protocolVersion=1,
                 protocolRevision=0,
             )
@@ -110,6 +118,7 @@ class Server:
 
         except Exception as error:
             logger.error("an error has occurred: {}".format(error))
+            logger.error('%s unhandled exception\n%s' % (self, traceback.format_exc()))
         finally:
             logger.debug("finally")
 
@@ -129,18 +138,19 @@ class Server:
         logger.info('BACnet stopped')
 
 
-
-
 class BIPApplication(BIPSimpleApplication):
 
     def __init__(self, *args):
         if _debug: logger.debug("__init__ %r", args)
-        BIPSimpleApplication.__init__(self, *args)
+        try:
+            BIPSimpleApplication.__init__(self, *args)
+        except OSError as e:
+            logger.error("BACnet error : %s" % str(e))
 
         # keep track of requests to line up responses
         self._request = None
 
-    def do_whois(self, addr=None,lolimit=None,hilimit=None):
+    def do_whois(self, addr=None, lolimit=None, hilimit=None):
         """whois [ <addr>] [ <lolimit> <hilimit> ]"""
 
         try:
@@ -208,10 +218,11 @@ class BIPApplication(BIPSimpleApplication):
                     if prop_id not in PropertyIdentifier.enumerations:
                         break
 
-
                     if prop_id in ('all', 'required', 'optional'):
                         pass
                     else:
+                        logger.debug(obj_type)
+                        logger.debug(prop_id)
                         datatype = get_datatype(obj_type, prop_id)
                         if not datatype:
                             raise ValueError("invalid property for object type")
@@ -257,12 +268,21 @@ class BIPApplication(BIPSimpleApplication):
             # give it to the application
             self.request_io(iocb)
 
+            logger.debug(iocb.ioComplete.is_set())
+
             # do something for error/reject/abort
             if iocb.ioError:
-                sys.stdout.write(str(iocb.ioError) + '\n')
+                logger.error(str(iocb.ioError))
+
+            try:
+                return float(iocb.ioResponse)
+            except:
+                logger.error("Data not a number : %s" % iocb.ioResponse)
+                return None
 
         except Exception as error:
             logger.debug("exception: %r", error)
+            logger.error('%s unhandled exception\n%s' % (self, traceback.format_exc()))
 
     def send_subscription(self, addr, proc_id, objid, confirmed=None, lifetime=None):
         if _debug: logger.debug("send_subscription")
@@ -346,12 +366,11 @@ class BIPApplication(BIPSimpleApplication):
                 pass
             else:
                 # print out the contents
-                sys.stdout.write('pduSource = ' + repr(apdu.pduSource) + '\n')
-                sys.stdout.write('iAmDeviceIdentifier = ' + str(apdu.iAmDeviceIdentifier) + '\n')
-                sys.stdout.write('maxAPDULengthAccepted = ' + str(apdu.maxAPDULengthAccepted) + '\n')
-                sys.stdout.write('segmentationSupported = ' + str(apdu.segmentationSupported) + '\n')
-                sys.stdout.write('vendorID = ' + str(apdu.vendorID) + '\n')
-                sys.stdout.flush()
+                logger.debug('pduSource = ' + repr(apdu.pduSource) + '\n')
+                logger.debug('iAmDeviceIdentifier = ' + str(apdu.iAmDeviceIdentifier) + '\n')
+                logger.debug('maxAPDULengthAccepted = ' + str(apdu.maxAPDULengthAccepted) + '\n')
+                logger.debug('segmentationSupported = ' + str(apdu.segmentationSupported) + '\n')
+                logger.debuge('vendorID = ' + str(apdu.vendorID) + '\n')
             self._request = None
         # forward it along
         BIPSimpleApplication.indication(self, apdu)
@@ -376,13 +395,13 @@ class BIPApplication(BIPSimpleApplication):
                 # here is the read result
                 readResult = element.readResult
 
-                sys.stdout.write(str(propertyIdentifier))
+                logger.debug(str(propertyIdentifier))
                 if propertyArrayIndex is not None:
-                    sys.stdout.write("[" + str(propertyArrayIndex) + "]")
+                    logger.debug("[" + str(propertyArrayIndex) + "]")
 
                 # check for an error
                 if readResult.propertyAccessError is not None:
-                    sys.stdout.write(" ! " + str(readResult.propertyAccessError) + '\n')
+                    logger.debug(" ! " + str(readResult.propertyAccessError))
 
                 else:
                     # here is the value
@@ -404,8 +423,7 @@ class BIPApplication(BIPSimpleApplication):
                             value = propertyValue.cast_out(datatype)
                         if _debug: logger.debug("    - value: %r", value)
 
-                    sys.stdout.write(" = " + str(value) + '\n')
-                sys.stdout.flush()
+                    logger.debug(" = " + str(value))
 
 
 class Device:
@@ -416,11 +434,219 @@ class Device:
     def __init__(self, device):
         self.device = device
         self._device_not_accessible = 0
-
-        self.trans_input_registers = []
-        self.trans_coils = []
-        self.trans_holding_registers = []
-        self.trans_discrete_inputs = []
         self.variables = {}
-        self.data = []
 
+        if self.device.bacnetdevice.device_type == 0:
+            try:
+                self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" +
+                                        str(self.device.bacnetdevice.mask),
+                                        port=self.device.bacnetdevice.port)
+                self.device.bacnetdevice.remote_devices_discovered = 'Discovering'
+                BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                self.server.discover(networks='known')
+                remote_devices = self.server.devices
+                if type(remote_devices) == list:
+                    _remote_devices = ''
+                    for d in remote_devices:
+                        _remote_devices += str(d) + '\n'
+                    self.device.bacnetdevice.remote_devices_discovered = \
+                        _remote_devices[:BACnetDevice._meta.get_field('remote_devices_discovered').max_length]
+                    BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                else:
+                    self.device.bacnetdevice.remote_devices_discovered = ''
+                    BACnetDevice.objects.bulk_update([self.device.bacnetdevice], ['remote_devices_discovered'])
+                _remotes = []
+                for remote in remote_devices:
+                    if len(remote) == 4:
+                        r = BACnetDevice.objects.filter(bacnet_local_device=self.device, ip_address=remote[2])
+                        if len(r) > 1:
+                            logger.info("BACnet remote device duplicated : %s" % r)
+                        elif len(r) == 0:
+                            continue
+                        else:
+                            r = r.first()
+                            dev = BAC0.device(remote[2], int(remote[3]), self.server, history_size=0, poll=0)
+                            dev.update_bacnet_properties()
+                            #logger.debug(dev.properties.objects_list)
+                            _variables = ''
+                            for v in dev.properties.objects_list:
+                                _variables += str(v) + '\n'
+                            r.remote_devices_variables = \
+                                _variables[:BACnetDevice._meta.get_field('remote_devices_variables').max_length]
+                            _remotes.append(r)
+                            dev.disconnect()
+                BACnetDevice.objects.bulk_update(_remotes, ['remote_devices_variables'])
+
+            except BAC0.core.io.IOExceptions.InitializationError as e:
+                self.server = None
+                logger.warning(e)
+
+            #if not self._connect():
+            #    if self._device_not_accessible == -1:  #
+            #        logger.error("device with id: %d is not accessible" % self.device.pk)
+            #    self._device_not_accessible -= 1
+
+            self.remote_devices = {}
+            for dev in self.device.bacnet_remote_devices.filter(bacnet_device__active=1):
+                self.remote_devices[dev.bacnet_device.pk] = dev.bacnet_device
+                for var in dev.bacnet_device.variable_set.filter(active=1):
+                    if not hasattr(var, 'bacnetvariable'):
+                        continue
+                    self.variables[var.pk] = var
+        else:
+            for var in self.device.variable_set.filter(active=1):
+                if not hasattr(var, 'bacnetvariable'):
+                    continue
+                self.variables[var.pk] = var
+
+    def _connect(self):
+        """
+        connect to the bacnet slave (server)
+        """
+        if self.server is not None:
+            status = self.server.connect()
+            return status
+
+    def _disconnect(self):
+        """
+        disconnect to the bacnet slave (server)
+        """
+        if self.server is not None:
+            logger.debug("Disconnecting BACNet device %s" % self.server)
+            status = self.server.disconnect()
+            return status
+
+    def request_data(self):
+        """
+
+        """
+        if not driver_ok:
+            return None
+
+        output = []
+        properties = []
+
+        for item in self.variables.values():
+            value = None
+            if self.server is None:
+                return output
+            try:
+                value = self.server.read(str(item.device.bacnetdevice.ip_address)
+                                               + " "
+                                               + str(item.bacnetvariable.object_type_choises[item.bacnetvariable.object_type][1])
+                                               + " "
+                                               + str(item.bacnetvariable.object_identifier)
+                                               + " "
+                                               + "presentValue")
+                value = float(value)
+            except BAC0.core.io.IOExceptions.NoResponseFromController as e:
+                logger.info("%s : %s" % (self.device, e))
+                value = None
+            except ValueError:
+                if type(value) == str:
+                    value = item.convert_string_value(value)
+                else:
+                    logger.info("Value read for %s format not supported : %s" % (item, type(value)))
+                    value = None
+            except Exception as e:
+                logger.info("%s : %s" % (self.device, e))
+                value = None
+            if value is not None and item.update_value(value, time()):
+                output.append(item.create_recorded_data_element())
+            #properties.append([item.bacnetvariable.object_type_choises[item.bacnetvariable.object_type][1], item.bacnetvariable.object_identifier, [('presentValue', 0)]])
+
+        #if self.server.this_application is not None:
+        #    logger.debug(self.server.this_application.do_read(self.device.bacnetdevice.ip_address, properties))
+
+
+
+        #for item in self.variables.values():
+        #    if value is not None and item.update_value(value, time):
+        #        output.append(item.create_recorded_data_element())
+        return output
+
+    def write_data(self, variable_id, value, task):
+        """
+
+        """
+        logger.debug(variable_id)
+        logger.debug(value)
+        logger.debug(task)
+
+        if not driver_ok:
+            return None
+
+        output = []
+        properties = []
+
+        v = Variable.objects.get(id=variable_id)
+        if v is None:
+            return output
+        elif not v.writeable:
+            logger.debug("%s is not writeable" % v)
+            return output
+        read_value = None
+        try:
+            self.server.write(str(v.device.bacnetdevice.ip_address)
+                              + " "
+                              + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
+                              + " "
+                              + str(v.bacnetvariable.object_identifier)
+                              + " "
+                              + "presentValue "
+                              + str(value)
+                              + " ")
+            read_value = self.server.read(str(v.device.bacnetdevice.ip_address)
+                                      + " "
+                                      + str(v.bacnetvariable.object_type_choises[v.bacnetvariable.object_type][1])
+                                      + " "
+                                      + str(v.bacnetvariable.object_identifier)
+                                      + " "
+                                      + "presentValue")
+            read_value = float(read_value)
+        except BAC0.core.io.IOExceptions.NoResponseFromController as e:
+            logger.info("%s : %s" % (self.device, e))
+            read_value = None
+        except ValueError:
+            if type(read_value) == str:
+                read_value = v.convert_string_value(read_value)
+            else:
+                logger.info("Value read for %s format not supported : %s" % (v, type(read_value)))
+                read_value = None
+        except Exception as e:
+            logger.info("%s : %s" % (self.device, e))
+            read_value = None
+        if read_value is not None and v.update_value(read_value, time()):
+            output.append(v.create_recorded_data_element())
+
+        return output
+
+
+class Process(MultiDeviceDAQProcess):
+    device_filter = dict(bacnetdevice__isnull=False, protocol_id=PROTOCOL_ID)
+    bp_label = 'pyscada.bacnet-%s'
+
+    def init_process(self):
+        r = super(Process, self).init_process()
+        for d in self.devices:
+            if self.devices[d].device.bacnetdevice.device_type > 0:
+                logger.debug("Change device instance for %s to %s"
+                %(self.devices[d].device.bacnetdevice, self.devices[d].device.bacnetdevice.bacnet_local_device))
+                self.devices[d] = self.devices[self.devices[d].device.bacnetdevice.bacnet_local_device.id]
+        return r
+
+    def restart(self):
+        """
+        just re-init
+        """
+        r = False
+        for d in self.devices:
+            if PyScadaDevice.objects.get(id=d).bacnetdevice.device_type == 0:
+                self.devices[d]._disconnect()
+        #if self.device.device.bacnetdevice.device_type == 0:
+                #r = super(Process, self).restart()
+                r = True
+            else:
+                logger.debug("Not a local bacnet device : not restarting %s" % d)
+                self.stop()
+        return r

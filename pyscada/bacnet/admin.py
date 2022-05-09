@@ -2,24 +2,18 @@
 from __future__ import unicode_literals
 
 from pyscada.bacnet import PROTOCOL_ID
-from pyscada.bacnet.models import BACnetDevice
-from pyscada.bacnet.models import BACnetObject
+from pyscada.bacnet.models import BACnetDevice, ExtendedBACnetDevice
+from pyscada.bacnet.models import BACnetVariable, BACnetVariableProperty, ExtendedBACnetVariable
 from pyscada.admin import DeviceAdmin
 from pyscada.admin import VariableAdmin
 from pyscada.admin import admin_site
 from pyscada.models import Device, DeviceProtocol
 from pyscada.models import Variable
 from django.contrib import admin
+
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class ExtendedBACnetDevice(Device):
-    class Meta:
-        proxy = True
-        verbose_name = 'BACnet Device'
-        verbose_name_plural = 'BACnet Devices'
 
 
 class BACnetDeviceAdminInline(admin.StackedInline):
@@ -43,15 +37,8 @@ class BACnetDeviceAdmin(DeviceAdmin):
     ]
 
 
-class ExtendedBACnetVariable(Variable):
-    class Meta:
-        proxy = True
-        verbose_name = 'BACnet Variable'
-        verbose_name_plural = 'BACnet Variables'
-
-
 class BACnetVariableAdminInline(admin.StackedInline):
-    model = BACnetObject
+    model = BACnetVariable
 
 
 class BACnetVariableAdmin(VariableAdmin):
@@ -81,5 +68,6 @@ class BACnetVariableAdmin(VariableAdmin):
     ]
 
 
-admin_site.register(ExtendedBACnetDevice, BACnetDeviceAdmin)
-admin_site.register(ExtendedBACnetVariable, BACnetVariableAdmin)
+#admin_site.register(ExtendedBACnetDevice, BACnetDeviceAdmin)
+#admin_site.register(ExtendedBACnetVariable, BACnetVariableAdmin)
+admin_site.register(BACnetVariableProperty)
