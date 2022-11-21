@@ -45,7 +45,7 @@ from pyscada.bacnet import PROTOCOL_ID
 from pyscada.bacnet.models import BACnetDevice
 
 import logging
-
+logging.getLogger("BAC0_Root.BAC0").propagate = False
 logger = logging.getLogger(__name__)
 _debug = 1
 
@@ -436,6 +436,11 @@ class Device:
         self._device_not_accessible = 0
         self.variables = {}
 
+        if not driver_ok:
+            logger.warning("Bacnet driver not loaded. Install bacpypes and BAC0.")
+            self.server = None
+            return
+
         if self.device.bacnetdevice.device_type == 0:
             try:
                 self.server = BAC0.lite(ip=str(self.device.bacnetdevice.ip_address) + "/" +
@@ -465,7 +470,13 @@ class Device:
                             continue
                         else:
                             r = r.first()
-                            dev = BAC0.device(remote[2], int(remote[3]), self.server, history_size=0, poll=0)
+                            dev = BAC0.device(remote[2],
+                                              int(remote[3]),
+                                              self.server,
+                                              history_size=None,
+                                              poll=0,
+                                              auto_save=False,
+                                              )
                             dev.update_bacnet_properties()
                             #logger.debug(dev.properties.objects_list)
                             _variables = ''
