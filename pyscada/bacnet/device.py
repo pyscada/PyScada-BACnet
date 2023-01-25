@@ -485,7 +485,7 @@ class Device:
                             r.remote_devices_variables = \
                                 _variables[:BACnetDevice._meta.get_field('remote_devices_variables').max_length]
                             _remotes.append(r)
-                            dev.disconnect()
+                            dev.disconnect(save_on_disconnect=False)
                 BACnetDevice.objects.bulk_update(_remotes, ['remote_devices_variables'])
 
             except BAC0.core.io.IOExceptions.InitializationError as e:
