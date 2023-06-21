@@ -117,8 +117,8 @@ class Server:
             logger.debug("Running")
 
         except Exception as error:
-            logger.error("an error has occurred: {}".format(error))
-            logger.error('%s unhandled exception\n%s' % (self, traceback.format_exc()))
+            logger.error(f"an error has occurred: {error}", exc_info=True)
+            logger.error(f'{self} unhandled exception', exc_info=True)
         finally:
             logger.debug("finally")
 
@@ -145,7 +145,7 @@ class BIPApplication(BIPSimpleApplication):
         try:
             BIPSimpleApplication.__init__(self, *args)
         except OSError as e:
-            logger.error("BACnet error : %s" % str(e))
+            logger.error(f"BACnet error : {e}", exc_info=True)
 
         # keep track of requests to line up responses
         self._request = None
@@ -272,17 +272,17 @@ class BIPApplication(BIPSimpleApplication):
 
             # do something for error/reject/abort
             if iocb.ioError:
-                logger.error(str(iocb.ioError))
+                logger.error(str(iocb.ioError), exc_info=True)
 
             try:
                 return float(iocb.ioResponse)
             except:
-                logger.error("Data not a number : %s" % iocb.ioResponse)
+                logger.error(f"Data not a number : {iocb.ioResponse}", exc_info=True)
                 return None
 
         except Exception as error:
             logger.debug("exception: %r", error)
-            logger.error('%s unhandled exception\n%s' % (self, traceback.format_exc()))
+            logger.error(f'{self} unhandled exception', exc_info=True)
 
     def send_subscription(self, addr, proc_id, objid, confirmed=None, lifetime=None):
         if _debug: logger.debug("send_subscription")
