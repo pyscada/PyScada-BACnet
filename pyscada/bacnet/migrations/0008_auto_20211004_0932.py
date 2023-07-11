@@ -5,15 +5,20 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bacnet', '0007_auto_20211004_0928'),
+        ("bacnet", "0007_auto_20211004_0928"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='bacnetdevice',
-            name='bacnet_local_device',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='bacnet_remote_devices', to='pyscada.Device'),
+            model_name="bacnetdevice",
+            name="bacnet_local_device",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="bacnet_remote_devices",
+                to="pyscada.Device",
+            ),
         ),
     ]

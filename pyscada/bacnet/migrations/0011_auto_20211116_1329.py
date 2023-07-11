@@ -4,26 +4,37 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bacnet', '0010_auto_20211004_0939'),
+        ("bacnet", "0010_auto_20211004_0939"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='bacnetdevice',
-            options={'verbose_name': 'BACnet Device', 'verbose_name_plural': 'BACnet Devices'},
+            name="bacnetdevice",
+            options={
+                "verbose_name": "BACnet Device",
+                "verbose_name_plural": "BACnet Devices",
+            },
         ),
         migrations.AlterModelOptions(
-            name='bacnetdeviceproperty',
-            options={'verbose_name': 'BACnet Device Property', 'verbose_name_plural': 'BACnet Device Properties'},
+            name="bacnetdeviceproperty",
+            options={
+                "verbose_name": "BACnet Device Property",
+                "verbose_name_plural": "BACnet Device Properties",
+            },
         ),
         migrations.AlterModelOptions(
-            name='bacnetvariable',
-            options={'verbose_name': 'BACnet Variable', 'verbose_name_plural': 'BACnet Variables'},
+            name="bacnetvariable",
+            options={
+                "verbose_name": "BACnet Variable",
+                "verbose_name_plural": "BACnet Variables",
+            },
         ),
         migrations.AlterModelOptions(
-            name='bacnetvariableproperty',
-            options={'verbose_name': 'BACnet Variable Property', 'verbose_name_plural': 'BACnet Variable Properties'},
+            name="bacnetvariableproperty",
+            options={
+                "verbose_name": "BACnet Variable Property",
+                "verbose_name_plural": "BACnet Variable Properties",
+            },
         ),
     ]

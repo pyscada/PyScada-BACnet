@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bacnet', '0005_add_device_protocol'),
+        ("bacnet", "0005_add_device_protocol"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='bacnetvariable',
-            name='bacnet_device',
+            model_name="bacnetvariable",
+            name="bacnet_device",
         ),
     ]

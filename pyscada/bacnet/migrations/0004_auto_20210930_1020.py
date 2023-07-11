@@ -4,15 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bacnet', '0003_auto_20210930_0956'),
+        ("bacnet", "0003_auto_20210930_0956"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='bacnetvariableproperty',
-            old_name='bacnet_device',
-            new_name='bacnet_variable',
+            model_name="bacnetvariableproperty",
+            old_name="bacnet_device",
+            new_name="bacnet_variable",
         ),
     ]

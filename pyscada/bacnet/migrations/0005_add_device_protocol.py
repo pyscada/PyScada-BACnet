@@ -12,15 +12,19 @@ def forwards_func(apps, schema_editor):
     DeviceProtocol = apps.get_model("pyscada", "DeviceProtocol")
     db_alias = schema_editor.connection.alias
     if not DeviceProtocol.objects.using(db_alias).filter(pk=PROTOCOL_ID):
-        DeviceProtocol.objects.using(db_alias).bulk_create([
-            DeviceProtocol(pk=PROTOCOL_ID,
-                           protocol='bacnet',
-                           description='Bacnet Interface',
-                           app_name='pyscada.bacnet',
-                           device_class='pyscada.bacnet.device',
-                           daq_daemon=True,
-                           single_thread=True),
-        ])
+        DeviceProtocol.objects.using(db_alias).bulk_create(
+            [
+                DeviceProtocol(
+                    pk=PROTOCOL_ID,
+                    protocol="bacnet",
+                    description="Bacnet Interface",
+                    app_name="pyscada.bacnet",
+                    device_class="pyscada.bacnet.device",
+                    daq_daemon=True,
+                    single_thread=True,
+                ),
+            ]
+        )
 
 
 def reverse_func(apps, schema_editor):
@@ -33,8 +37,8 @@ def reverse_func(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('bacnet', '0004_auto_20210930_1020'),
-        ('pyscada', '0059_auto_20200211_1049'),
+        ("bacnet", "0004_auto_20210930_1020"),
+        ("pyscada", "0059_auto_20200211_1049"),
     ]
 
     operations = [

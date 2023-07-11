@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bacnet', '0009_auto_20211004_0937'),
+        ("bacnet", "0009_auto_20211004_0937"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='bacnetdevice',
-            name='mask',
-            field=models.PositiveSmallIntegerField(default=24, help_text='Network mask for local device only'),
+            model_name="bacnetdevice",
+            name="mask",
+            field=models.PositiveSmallIntegerField(
+                default=24, help_text="Network mask for local device only"
+            ),
         ),
     ]
