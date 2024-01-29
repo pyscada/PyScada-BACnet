@@ -647,16 +647,16 @@ class Device:
             except Exception as e:
                 logger.info("%s : %s" % (self.device, e))
                 value = None
-            if value is not None and item.update_value(value, time()):
-                output.append(item.create_recorded_data_element())
+            if value is not None and item.update_values([value], [time()]):
+                output.append(item)
             # properties.append([item.bacnetvariable.object_type_choises[item.bacnetvariable.object_type][1], item.bacnetvariable.object_identifier, [('presentValue', 0)]])
 
         # if self.server.this_application is not None:
         #    logger.debug(self.server.this_application.do_read(self.device.bacnetdevice.ip_address, properties))
 
         # for item in self.variables.values():
-        #    if value is not None and item.update_value(value, time):
-        #        output.append(item.create_recorded_data_element())
+        #    if value is not None and item.update_values([value], [time]):
+        #        output.append(item)
         return output
 
     def write_data(self, variable_id, value, task):
@@ -723,8 +723,8 @@ class Device:
         except Exception as e:
             logger.info("%s : %s" % (self.device, e))
             read_value = None
-        if read_value is not None and v.update_value(read_value, time()):
-            output.append(v.create_recorded_data_element())
+        if read_value is not None and v.update_values([read_value], [time()]):
+            output.append(v)
 
         return output
 
